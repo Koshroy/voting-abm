@@ -68,7 +68,7 @@ def update_loop(user, posts):
 def run(num_users, num_runs):
     extremist_opinion = random()
     
-    # Initialize the posts priority queue
+    # Initialize the posts in a sorted list
     posts = SortedList(key=attrgetter('score'))
     for i in range(num_users*10):
         posts.add(Post(random()))
