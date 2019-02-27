@@ -1,13 +1,16 @@
 from operator import attrgetter
-from random import random, shuffle
+from random import random, shuffle, uniform
+
+from sortedcontainers import SortedList
 
 
 ENTHUSIAST_PROB = 0.1
-EXTREMIST_PROB = 0.00
+EXTREMIST_PROB = 0.08
 
 EXTREMIST_RADIUS = 0.01
 NORMAL_RADIUS = 0.1
 
+EXTREMIST_SPREAD=0.001
 
 class Entity:
     uuid_counter = 0 # is this going to be unique with subclasses?
@@ -43,50 +46,63 @@ class Post(Entity):
         self.score = 0
 
 
+    def __eq__(self, other):
+        return self.score == other.score
+
+
 def update_loop(user, posts):
-    sorted_posts = sorted(posts, key=attrgetter('score'), reverse=True)
+    # update_loop mutates posts
     post_count = 0
-    for post in sorted_posts:
-        if post_count > user.enthusiasm:
-            break
+    processed_posts = SortedList(key=attrgetter('score'))
 
+    for i in range(user.enthusiasm):
+        # Pop the highest element on this list
+        post = posts.pop()
         post.score += user.vote(post)
-        post_count += 1
+        processed_posts.add(post)
 
-    return sorted_posts
+
+    posts.update(processed_posts)
 
 
 def run(num_users, num_runs):
-    posts = [Post(random()) for i in range(num_users*10)]
-    users = []
+    extremist_opinion = random()
     
+    # Initialize the posts priority queue
+    posts = SortedList(key=attrgetter('score'))
+    for i in range(num_users*10):
+        posts.add(Post(random()))
+
+    users = []
     for i in range(num_users):
         is_enthusiast = random() < ENTHUSIAST_PROB
         enthusiasm = 100 if is_enthusiast else 10
         passionate = random() < EXTREMIST_PROB
+        opinion = uniform(
+            extremist_opinion - extremist_opinion*EXTREMIST_SPREAD,
+            extremist_opinion + extremist_opinion*EXTREMIST_SPREAD,
+        ) if passionate else random()
         opinion_radius = EXTREMIST_RADIUS if passionate else NORMAL_RADIUS
         users.append(User(
-            random(),
+            opinion,
             opinion_radius,
             enthusiasm,
             passionate,
         ))
 
-    new_posts = posts
     shuffle(users) # shuffle the users so we "randomly" activate them
 
     for i in range(num_runs):
-        print('Updating: {}', i+1)
+        print('Updating:', i+1)
         for u in users:
-            new_posts = update_loop(u, new_posts)
+            update_loop(u, posts)
         
-    sorted_new_posts = sorted(new_posts, key=attrgetter('score'), reverse=True)
     for i in range(20):
-        print('Post Score: {} | Opinion: {}'.format(sorted_new_posts[i].score, sorted_new_posts[i].opinion))
+        post = posts.pop()
+        print('Post Score: {} | Opinion: {}'.format(post.score, post.opinion))
 
-    print('Extremist Users:')
-    for user in [u for u in users if u.passionate]:
-        print('User UUID: {} | Opinion: {}'.format(user.uuid, user.opinion))
+    print('Extremist Opinion:', extremist_opinion)
+    print('Num. of Extremist Users:', len([u for u in users if u.passionate]))
 
 
 def main():
