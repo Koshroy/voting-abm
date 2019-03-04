@@ -15,4 +15,4 @@ class BaseVotingRules:
 
 class NoDownvoteRules(BaseVotingRules):
     def convert(self, feeling):
-        return feeling == Vote.LIKE
+        return 1 if feeling == Vote.LIKE else 0
